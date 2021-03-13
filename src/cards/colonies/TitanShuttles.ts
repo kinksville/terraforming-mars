@@ -1,68 +1,79 @@
-import { IProjectCard } from "../IProjectCard";
-import { Tags } from "../Tags";
-import { CardType } from "../CardType";
-import { Player } from "../../Player";
-import { CardName } from "../../CardName";
-import { ResourceType } from "../../ResourceType";
-import { SelectOption } from "../../inputs/SelectOption";
-import { OrOptions } from "../../inputs/OrOptions";
-import { Game } from "../../Game";
-import { SelectAmount } from "../../inputs/SelectAmount";
-import { IResourceCard } from "../ICard";
-import { LogHelper } from "../../components/LogHelper";
+import {IProjectCard} from '../IProjectCard';
+import {Tags} from '../Tags';
+import {CardType} from '../CardType';
+import {Player} from '../../Player';
+import {CardName} from '../../CardName';
+import {ResourceType} from '../../ResourceType';
+import {SelectOption} from '../../inputs/SelectOption';
+import {OrOptions} from '../../inputs/OrOptions';
+import {SelectAmount} from '../../inputs/SelectAmount';
+import {IResourceCard} from '../ICard';
+import {AddResourcesToCard} from '../../deferredActions/AddResourcesToCard';
+import {CardRenderer} from '../render/CardRenderer';
+import {Card} from '../Card';
 
-export class TitanShuttles implements IProjectCard, IResourceCard {
-    public cost: number = 23;
-    public tags: Array<Tags> = [Tags.JOVIAN, Tags.SPACE];
-    public name: CardName = CardName.TITAN_SHUTTLES;
-    public cardType: CardType = CardType.ACTIVE;
-    public resourceType: ResourceType = ResourceType.FLOATER;
-    public resourceCount: number = 0;
+export class TitanShuttles extends Card implements IProjectCard, IResourceCard {
+  constructor() {
+    super({
+      cost: 23,
+      tags: [Tags.JOVIAN, Tags.SPACE],
+      name: CardName.TITAN_SHUTTLES,
+      cardType: CardType.ACTIVE,
+      resourceType: ResourceType.FLOATER,
 
-    public canAct(): boolean {
-        return true;
-    }
+      metadata: {
+        cardNumber: 'C45',
+        renderData: CardRenderer.builder((b) => {
+          b.action('Add 2 floaters to ANY JOVIAN CARD.', (eb) => {
+            eb.empty().startAction.floaters(2).secondaryTag(Tags.JOVIAN);
+          }).br;
+          b.or().br;
+          b.action('Spend any number of floaters here to gain the same number of titanium.', (eb) => {
+            eb.text('x').floaters(1).startAction.text('x').titanium(1);
+          }).br;
+        }),
+        victoryPoints: 1,
+      },
+    });
+  }
 
-    public action(player: Player, game: Game) {
-        var opts: Array<SelectOption | SelectAmount> = [];
+  public resourceCount: number = 0;
 
-        const floaterCards = player.getResourceCards(ResourceType.FLOATER).filter((card) => card.tags.indexOf(Tags.JOVIAN) !== -1);
+  public canAct(): boolean {
+    return true;
+  }
 
-        if (floaterCards.length === 1 && this.resourceCount === 0) {
-            player.addResourceTo(floaterCards[0], 2);
-            LogHelper.logAddResource(game, player, floaterCards[0]);
-            return undefined;
-        }
-
-        const addResource = new SelectOption("Add 2 floaters to a Jovian card", "Add floaters", () => {
-            if (floaterCards.length === 1) {
-                player.addResourceTo(floaterCards[0], 2);
-                LogHelper.logAddResource(game, player, floaterCards[0]);
-            } else if (floaterCards.length > 1) {
-                game.addResourceInterrupt(player, ResourceType.FLOATER, 2, undefined, Tags.JOVIAN);
-            }
-
-            return undefined;
-        });
-
-        const spendResource = new SelectAmount("Remove X floaters on this card to gain X titanium", "Remove floaters", (amount: number) => {
-            player.removeResourceFrom(this, amount);
-            player.titanium += amount; 
-            return undefined;
-        }, this.resourceCount);
-
-        if (this.resourceCount > 0) opts.push(spendResource);
-        opts.push(addResource);
-
-        if (opts.length === 1) return (opts[0] as SelectOption).cb();
-        return new OrOptions(...opts);
-    }
-
-    public play() {
+  public action(player: Player) {
+    if (this.resourceCount === 0) {
+      player.game.defer(new AddResourcesToCard(player, ResourceType.FLOATER, {count: 2, restrictedTag: Tags.JOVIAN, title: 'Add 2 floaters to a Jovian card'}));
       return undefined;
     }
 
-    public getVictoryPoints(): number {
-        return 1;
-    }
+    return new OrOptions(
+      new SelectOption('Add 2 floaters to a Jovian card', 'Add floaters', () => {
+        player.game.defer(new AddResourcesToCard(player, ResourceType.FLOATER, {count: 2, restrictedTag: Tags.JOVIAN}));
+        return undefined;
+      }),
+      new SelectAmount(
+        'Remove X floaters on this card to gain X titanium',
+        'Remove floaters',
+        (amount: number) => {
+          player.removeResourceFrom(this, amount);
+          player.titanium += amount;
+          player.game.log('${0} removed ${1} floaters to gain ${2} titanium', (b) => b.player(player).number(amount).number(amount));
+          return undefined;
+        },
+        1,
+        this.resourceCount,
+      ),
+    );
+  }
+
+  public play() {
+    return undefined;
+  }
+
+  public getVictoryPoints(): number {
+    return 1;
+  }
 }

@@ -1,82 +1,40 @@
-import { IProjectCard } from "../IProjectCard";
-import { Tags } from "../Tags";
-import { CardType } from "../CardType";
-import { Player } from "../../Player";
-import { CardName } from "../../CardName";
-import { Game } from "../../Game";
-import { ResourceType } from "../../ResourceType";
-import { SelectCard } from "../../inputs/SelectCard";
-import { ICard } from "../ICard";
-import { SelectPlayer } from "../../inputs/SelectPlayer";
-import { Resources } from "../../Resources";
-import { AndOptions } from "../../inputs/AndOptions";
+import {IProjectCard} from '../IProjectCard';
+import {CardType} from '../CardType';
+import {Player} from '../../Player';
+import {CardName} from '../../CardName';
+import {ResourceType} from '../../ResourceType';
+import {Resources} from '../../Resources';
+import {RemoveResourcesFromCard} from '../../deferredActions/RemoveResourcesFromCard';
+import {StealResources} from '../../deferredActions/StealResources';
+import {Card} from '../Card';
+import {CardRenderItemSize} from '../render/CardRenderItemSize';
+import {CardRenderer} from '../render/CardRenderer';
 
+export class AirRaid extends Card implements IProjectCard {
+  constructor() {
+    super({
+      cost: 0,
+      name: CardName.AIR_RAID,
+      cardType: CardType.EVENT,
 
-export class AirRaid implements IProjectCard {
-    public cost: number = 0;
-    public tags: Array<Tags> = [];
-    public name: CardName = CardName.AIR_RAID;
-    public cardType: CardType = CardType.EVENT;
-    public hasRequirements = false;
+      metadata: {
+        cardNumber: 'C02',
+        description: 'Requires that you lose 1 floater. Steal 5 MC from any player.',
+        renderData: CardRenderer.builder((b) => {
+          b.minus().floaters(1);
+          b.text('steal', CardRenderItemSize.MEDIUM, true).megacredits(5).any;
+        }),
+      },
+    });
+  }
 
-    public canPlay(player: Player): boolean {
-        return player.getResourceCount(ResourceType.FLOATER) > 0;
-    }
+  public canPlay(player: Player): boolean {
+    return player.getResourceCount(ResourceType.FLOATER) > 0;
+  }
 
-    public play(player: Player, game: Game) {
-        let resourceCards = player.getCardsWithResources().filter(card => card.resourceType === ResourceType.FLOATER);
-
-        const selectCard = new SelectCard(
-            "Select card to remove one floater from",
-            "Remove floater",
-            resourceCards,
-            (foundCards: Array<ICard>) => {
-            player.removeResourceFrom(foundCards[0]);
-            return undefined;
-            }
-        );
-
-        if (game.soloMode) {
-            player.megaCredits += 5;
-
-            if (resourceCards.length === 1) {
-                player.removeResourceFrom(resourceCards[0]);
-                return undefined;
-            } else {
-                return selectCard;
-            }
-        }
-
-        const eligiblePlayers = game.getPlayers().filter(selectedPlayer => selectedPlayer !== player);
-
-        const selectPlayer = new SelectPlayer(eligiblePlayers, "Select player to steal up to 5 MC", "Remove MC", (selectedPlayer: Player) => {
-            player.megaCredits += Math.min(5, selectedPlayer.megaCredits);
-            selectedPlayer.setResource(Resources.MEGACREDITS, -5, game, player);
-            return undefined;
-        });
-
-        var options: Array<SelectPlayer | SelectCard<ICard>> = [];
-
-        if (resourceCards.length === 1) {
-            player.removeResourceFrom(resourceCards[0]);
-        } else {
-            options.push(selectCard);
-        }
-
-        if (eligiblePlayers.length > 1) {
-            options.push(selectPlayer);
-        } else {
-            player.megaCredits += Math.min(5, eligiblePlayers[0].megaCredits);
-            eligiblePlayers[0].setResource(Resources.MEGACREDITS, -5, game, player);
-        }
-        
-        if (options.length > 0) {
-            return new AndOptions(
-                () => {return undefined;},
-                ...options
-            );
-        } else {
-            return undefined;
-        }
-    }
+  public play(player: Player) {
+    player.game.defer(new StealResources(player, Resources.MEGACREDITS, 5));
+    player.game.defer(new RemoveResourcesFromCard(player, ResourceType.FLOATER, 1, true));
+    return undefined;
+  }
 }

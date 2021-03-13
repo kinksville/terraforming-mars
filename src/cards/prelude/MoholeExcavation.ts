@@ -1,18 +1,33 @@
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { PreludeCard } from "./PreludeCard";
-import { IProjectCard } from "../IProjectCard";
-import { Resources } from '../../Resources';
-import { CardName } from '../../CardName';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {PreludeCard} from './PreludeCard';
+import {IProjectCard} from '../IProjectCard';
+import {Resources} from '../../Resources';
+import {CardName} from '../../CardName';
+import {CardRenderer} from '../render/CardRenderer';
 
 export class MoholeExcavation extends PreludeCard implements IProjectCard {
-    public tags: Array<Tags> = [Tags.STEEL];
-    public name: CardName = CardName.MOHOLE_EXCAVATION;
-    public play(player: Player) {     
-        player.setProduction(Resources.STEEL);
-        player.setProduction(Resources.HEAT,2);
-        player.heat += 2;
-        return undefined;
-    }
-}
+  constructor() {
+    super({
+      name: CardName.MOHOLE_EXCAVATION,
+      tags: [Tags.BUILDING],
 
+      metadata: {
+        cardNumber: 'P23',
+        renderData: CardRenderer.builder((b) => {
+          b.production((pb) => {
+            pb.steel(1).br;
+            pb.heat(2);
+          }).heat(2);
+        }),
+        description: 'Increase your steel production 1 step and heat production 2 steps. Gain 2 heat.',
+      },
+    });
+  }
+  public play(player: Player) {
+    player.addProduction(Resources.STEEL);
+    player.addProduction(Resources.HEAT, 2);
+    player.heat += 2;
+    return undefined;
+  }
+}

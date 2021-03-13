@@ -1,28 +1,28 @@
-import { expect } from "chai";
-import { MartianSurvey } from "../../../src/cards/prelude/MartianSurvey";
-import { Color } from "../../../src/Color";
-import { Game } from "../../../src/Game";
-import { Player } from "../../../src/Player";
+import {expect} from 'chai';
+import {MartianSurvey} from '../../../src/cards/prelude/MartianSurvey';
+import {Game} from '../../../src/Game';
+import {Player} from '../../../src/Player';
+import {TestPlayers} from '../../TestingUtils';
 
-describe("MartianSurvey", function () {
-    let card : MartianSurvey, player : Player, game : Game;
+describe('MartianSurvey', function() {
+  let card : MartianSurvey; let player : Player; let game : Game;
 
-    beforeEach(function() {
-        card = new MartianSurvey();
-        player = new Player("test", Color.BLUE, false);
-        game = new Game("foobar", [player], player);
-    });
+  beforeEach(function() {
+    card = new MartianSurvey();
+    player = TestPlayers.BLUE.newPlayer();
+    game = Game.newInstance('foobar', [player], player);
+  });
 
-    it("Can't play", function () {
-        (game as any).oxygenLevel = 5;
-        expect(card.canPlay(player, game)).to.eq(false);
-    });
+  it('Can\'t play', function() {
+    (game as any).oxygenLevel = 5;
+    expect(card.canPlay(player)).is.not.true;
+  });
 
-    it("Should play", function () {
-        expect(card.canPlay(player, game)).to.eq(true);
-        card.play(player, game);
+  it('Should play', function() {
+    expect(card.canPlay(player)).is.true;
+    card.play(player);
 
-        expect(card.getVictoryPoints()).to.eq(1);
-        expect(player.cardsInHand.length).to.eq(2);
-    });
+    expect(card.getVictoryPoints()).to.eq(1);
+    expect(player.cardsInHand).has.lengthOf(2);
+  });
 });

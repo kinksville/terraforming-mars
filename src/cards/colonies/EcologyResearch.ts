@@ -1,48 +1,53 @@
-import { IProjectCard } from "../IProjectCard";
-import { Tags } from "../Tags";
-import { CardType } from '../CardType';
-import { Player } from "../../Player";
-import { CardName } from '../../CardName';
-import { Resources } from "../../Resources";
-import { Game } from '../../Game';
-import { ResourceType } from '../../ResourceType';
-import { LogHelper } from "../../components/LogHelper";
+import {IProjectCard} from '../IProjectCard';
+import {Tags} from '../Tags';
+import {CardType} from '../CardType';
+import {Player} from '../../Player';
+import {CardName} from '../../CardName';
+import {Resources} from '../../Resources';
+import {ResourceType} from '../../ResourceType';
+import {AddResourcesToCard} from '../../deferredActions/AddResourcesToCard';
+import {CardRenderItemSize} from '../render/CardRenderItemSize';
+import {Card} from '../Card';
+import {CardRenderer} from '../render/CardRenderer';
 
-export class EcologyResearch implements IProjectCard {
-    public cost: number = 21;
-    public tags: Array<Tags> = [Tags.SCIENCE, Tags.PLANT, Tags.ANIMAL, Tags.MICROBES];
-    public name: CardName = CardName.ECOLOGY_RESEARCH;
-    public cardType: CardType = CardType.AUTOMATED;
+export class EcologyResearch extends Card implements IProjectCard {
+  constructor() {
+    super({
+      cost: 21,
+      tags: [Tags.SCIENCE, Tags.PLANT, Tags.ANIMAL, Tags.MICROBE],
+      name: CardName.ECOLOGY_RESEARCH,
+      cardType: CardType.AUTOMATED,
 
-    public play(player: Player, game: Game) {
-        let coloniesCount: number = 0;
-        game.colonies.forEach(colony => { 
-          coloniesCount += colony.colonies.filter(owner => owner === player.id).length;
-        });  
-        player.setProduction(Resources.PLANTS, coloniesCount);
+      metadata: {
+        description: 'Increase your plant production 1 step for each colony you own. Add 1 animal to ANOTHER card and 2 microbes to ANOTHER card.',
+        cardNumber: 'C09',
+        renderData: CardRenderer.builder((b) => {
+          b.production((pb) => pb.plants(1).slash().colonies(1, CardRenderItemSize.SMALL)).br;
+          b.animals(1).asterix().nbsp.nbsp.microbes(2).asterix();
+        }),
+        victoryPoints: 1,
+      },
+    });
+  }
 
-        const animalCards = player.getResourceCards(ResourceType.ANIMAL);
+  public play(player: Player) {
+    const coloniesCount = player.getColoniesCount();
+    player.addProduction(Resources.PLANTS, coloniesCount);
 
-        if (animalCards.length === 1) {
-            player.addResourceTo(animalCards[0], 1);
-            LogHelper.logAddResource(game, player, animalCards[0]);
-        } else if (animalCards.length > 1) {
-            game.addResourceInterrupt(player, ResourceType.ANIMAL, 1, undefined);
-        }
-
-        const microbeCards = player.getResourceCards(ResourceType.MICROBE);
-
-        if (microbeCards.length === 1) {
-            player.addResourceTo(microbeCards[0], 2);
-            LogHelper.logAddResource(game, player, microbeCards[0], 2);
-        } else if (microbeCards.length > 1) {
-            game.addResourceInterrupt(player, ResourceType.MICROBE, 2, undefined);
-        }
-
-        return undefined;
+    const animalCards = player.getResourceCards(ResourceType.ANIMAL);
+    if (animalCards.length) {
+      player.game.defer(new AddResourcesToCard(player, ResourceType.ANIMAL, {count: 1}));
     }
 
-    public getVictoryPoints() {
-        return 1;
+    const microbeCards = player.getResourceCards(ResourceType.MICROBE);
+    if (microbeCards.length) {
+      player.game.defer(new AddResourcesToCard(player, ResourceType.MICROBE, {count: 2}));
     }
+
+    return undefined;
+  }
+
+  public getVictoryPoints() {
+    return 1;
+  }
 }

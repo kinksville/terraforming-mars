@@ -1,33 +1,28 @@
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { Game } from "../../Game";
-import { PreludeCard } from "./PreludeCard";
-import { IProjectCard } from "../IProjectCard";
-import { CardName } from '../../CardName';
-import { LogMessageType } from "../../LogMessageType";
-import { LogMessageData } from "../../LogMessageData";
-import { LogMessageDataType } from "../../LogMessageDataType";
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {PreludeCard} from './PreludeCard';
+import {CardName} from '../../CardName';
+import {CardRenderer} from '../render/CardRenderer';
 
-export class AcquiredSpaceAgency extends PreludeCard implements IProjectCard {
-    public tags: Array<Tags> = [];
-    public name: CardName = CardName.ACQUIRED_SPACE_AGENCY;
-    public play(player: Player, game: Game) {
-        for (let foundCard of game.drawCardsByTag(Tags.SPACE, 2)) {
-            player.cardsInHand.push(foundCard);
-        }
+export class AcquiredSpaceAgency extends PreludeCard {
+  constructor() {
+    super({
+      name: CardName.ACQUIRED_SPACE_AGENCY,
 
-        const drawnCards = game.getCardsInHandByTag(player, Tags.SPACE).slice(-2);
-
-        game.log(
-             LogMessageType.DEFAULT,
-            "${0} drew ${1} and ${2}",
-            new LogMessageData(LogMessageDataType.PLAYER, player.id),
-            new LogMessageData(LogMessageDataType.CARD, drawnCards[0].name),
-            new LogMessageData(LogMessageDataType.CARD, drawnCards[1].name)
-        );
-
-	    player.titanium += 6;
-        return undefined;
-    };
+      metadata: {
+        cardNumber: 'P35',
+        renderData: CardRenderer.builder((b) => {
+          b.titanium(6, false).br.br; // double break intentional
+          b.cards(2).secondaryTag(Tags.SPACE);
+        }),
+        description: 'Gain 6 titanium. Reveal cards until you reveal two cards with Space Tags. Take them into your hand, discard the rest.',
+      },
+    });
+  }
+  public play(player: Player) {
+    player.titanium += 6;
+    player.drawCard(2, {tag: Tags.SPACE});
+    return undefined;
+  };
 }
 

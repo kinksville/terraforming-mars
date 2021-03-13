@@ -1,22 +1,47 @@
+import Vue from 'vue';
+import {Button} from '../components/common/Button';
+import {PlayerInputModel} from '../models/PlayerInputModel';
+import {TranslateMixin} from './TranslateMixin';
 
-import Vue from "vue";
-
-export const SelectAmount = Vue.component("select-amount", {
-    props: ["playerinput", "onsave", "showsave", "showtitle"],
-    data: function () {
-        return {
-            amount: 0
-        };
+export const SelectAmount = Vue.component('select-amount', {
+  components: {
+    'Button': Button,
+  },
+  mixins: [TranslateMixin],
+  props: {
+    playerinput: {
+      type: Object as () => PlayerInputModel,
     },
-    methods: {
-        saveData: function () {
-            this.onsave([[parseInt(this.$data.amount)]]);
-        }
+    onsave: {
+      type: Function as unknown as () => (out: Array<Array<string>>) => void,
     },
-    template: `<div>
-  <div v-if="showtitle === true">{{playerinput.title}}</div>
-  <input type="number" class="nes-input" value="0" min="0" :max="playerinput.max" v-model="amount" />
-  <button v-if="showsave === true" class="btn btn-lg btn-primary" v-on:click="saveData">{{playerinput.buttonLabel}}</button> 
-</div>`
+    showsave: {
+      type: Boolean,
+    },
+    showtitle: {
+      type: Boolean,
+    },
+  },
+  data: function() {
+    return {
+      amount: String(this.playerinput.min),
+    };
+  },
+  methods: {
+    saveData: function() {
+      this.onsave([[String(parseInt(this.amount))]]);
+    },
+    setMaxValue: function() {
+      this.amount = String(this.playerinput.max);
+    },
+  },
+  template: `
+    <div>
+        <div v-if="showtitle === true">{{ $t(playerinput.title) }}</div>
+        <div class="flex">
+            <input type="number" class="nes-input" value="playerinput.min" :min="playerinput.min" :max="playerinput.max" v-model="amount" />
+            <Button size="big" type="max" :onClick="setMaxValue" title="MAX" />
+            <Button v-if="showsave === true" size="big" :onClick="saveData" :title="playerinput.buttonLabel" />
+        </div>
+    </div>`,
 });
-

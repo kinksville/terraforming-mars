@@ -1,76 +1,146 @@
+import Vue from 'vue';
+import {ConfirmDialog} from './common/ConfirmDialog';
+import {PlayerInputModel} from '../models/PlayerInputModel';
+import {PreferencesManager} from './PreferencesManager';
+import {TranslateMixin} from './TranslateMixin';
 
-import Vue, { VNode } from "vue";
-import { PlayerInputModel } from "../models/PlayerInputModel";
-import { $t } from "../directives/i18n";
-
-export const SelectSpace = Vue.component("select-space", {
-    props: ["playerinput", "onsave", "showsave", "showtitle"],
-    data: function () {
-        return {
-            spaceId: undefined,
-            warning: undefined
-        };
+export const SelectSpace = Vue.component('select-space', {
+  props: {
+    playerinput: {
+      type: Object as () => PlayerInputModel,
     },
-    methods: {
-        saveData: function () {
-            if (this.$data.spaceId === undefined) {
-                this.$data.warning = "Must select a space";
-                return;
-            }
-            this.onsave([[this.$data.spaceId]]);
-        }
+    onsave: {
+      type: Function as unknown as () => (out: Array<Array<string>>) => void,
     },
-    mounted: function() {
-        const playerInput: PlayerInputModel = this.playerinput as PlayerInputModel;
-        const setOfSpaces: {[x: string]: boolean} = {};
-
-        if (playerInput.availableSpaces !== undefined) {
-            playerInput.availableSpaces.forEach((spaceId: string) => {
-                setOfSpaces[spaceId] = true;
-            });
-        }
-
-        const clearAllAvailableSpaces = function() {
-            const elTiles = document.getElementsByClassName("board-space-selectable");
-            for (let i = 0; i < elTiles.length; i++) {
-                elTiles[i].classList.remove("board-space--available");
-                elTiles[i].classList.remove("board-space--selected");
-            }
-        };
-
-        {
-            clearAllAvailableSpaces();
-            const elTiles = document.getElementsByClassName("board-space-selectable");
-            for (let i = 0; i < elTiles.length; i++) {
-                const elTile = elTiles[i] as HTMLElement;
-                var el_id = elTile.getAttribute("data_space_id");
-                if ( ! el_id || ! setOfSpaces[el_id]) continue;
-                
-                elTile.classList.add("board-space--available");
-
-                elTile.onclick = () => {
-                    clearAllAvailableSpaces();
-                    for (let j = 0; j < elTiles.length; j++) {
-                        (elTiles[j] as HTMLElement).onclick = null;
-                    }
-                    this.$data.spaceId = elTile.getAttribute("data_space_id");
-                    elTile.classList.add("board-space--selected")
-                    this.saveData();
-                }
-            }
-        }
+    showsave: {
+      type: Boolean,
     },
-    render: function (createElement) {
-        const playerInput: PlayerInputModel = this.playerinput as PlayerInputModel;
-        const children: Array<VNode> = [];
-        if (this.showtitle) {
-            children.push(createElement("div", {"class": "wf-select-space"}, $t(playerInput.title)));
+    showtitle: {
+      type: Boolean,
+    },
+  },
+  data: function() {
+    return {
+      availableSpaces: new Set(this.playerinput.availableSpaces),
+      selectedTile: undefined as HTMLElement | undefined,
+      spaceId: undefined,
+      warning: undefined,
+    };
+  },
+  components: {
+    'confirm-dialog': ConfirmDialog,
+  },
+  mixins: [TranslateMixin],
+  methods: {
+    animateSpace: function(tile: Element, activate: boolean) {
+      if (activate) {
+        tile.classList.add('board-space--available');
+      } else {
+        tile.classList.remove('board-space--available');
+      }
+    },
+    animateAvailableSpaces: function(tiles: Array<Element>) {
+      tiles.forEach((tile: Element) => {
+        const spaceId = tile.getAttribute('data_space_id');
+        if (spaceId !== null && this.availableSpaces.has(spaceId)) {
+          this.animateSpace(tile, true);
         }
-        if (this.$data.warning) {
-            children.push(createElement("div", { domProps: { className: "nes-container is-rounded" } }, [createElement("span", { domProps: { className: "nes-text is-warning" } }, this.$data.warning)]));
-        }
+      });
+    },
+    cancelPlacement: function() {
+      if (this.selectedTile === undefined) {
+        throw new Error('unexpected, no tile selected!');
+      }
+      this.animateSpace(this.selectedTile, false);
+      this.animateAvailableSpaces(this.getSelectableSpaces());
+    },
+    confirmPlacement: function() {
+      const tiles = this.getSelectableSpaces();
+      tiles.forEach((tile: Element) => {
+        (tile as HTMLElement).onclick = null;
+      });
 
-        return createElement("div", children);
+      if (this.selectedTile === undefined) {
+        throw new Error('unexpected, no tile selected!');
+      }
+      this.$data.spaceId = this.selectedTile.getAttribute('data_space_id');
+      this.selectedTile.classList.add('board-space--selected');
+      this.saveData();
+    },
+    disableAvailableSpaceAnimation: function() {
+      const tiles = this.getSelectableSpaces();
+      tiles.forEach((tile: Element) => {
+        tile.classList.remove('board-space--available', 'board-space--selected');
+      });
+    },
+    getSelectableSpaces: function() {
+      const spaces: Array<Element> = [];
+
+      let board = document.getElementById('main_board');
+      if (board !== null) {
+        const array = board.getElementsByClassName('board-space-selectable');
+        for (let i = 0, length = array.length; i < length; i++) {
+          spaces.push(array[i]);
+        }
+      }
+
+      board = document.getElementById('moon_board');
+      if (board !== null) {
+        const array = board.getElementsByClassName('board-space-selectable');
+        for (let i = 0, length = array.length; i < length; i++) {
+          spaces.push(array[i]);
+        }
+      }
+
+      return spaces;
+    },
+    hideDialog: function(hide: boolean) {
+      PreferencesManager.saveValue('hide_tile_confirmation', hide === true ? '1' : '0');
+    },
+    onTileSelected: function(tile: HTMLElement) {
+      this.selectedTile = tile;
+      this.disableAvailableSpaceAnimation();
+      this.animateSpace(tile, true);
+      tile.classList.remove('board-space--available');
+      const hideTileConfirmation = PreferencesManager.loadValue('hide_tile_confirmation') === '1';
+      if (hideTileConfirmation) {
+        this.confirmPlacement();
+      } else {
+        (this.$refs['confirmation'] as any).show();
+      }
+    },
+    saveData: function() {
+      if (this.$data.spaceId === undefined) {
+        this.$data.warning = 'Must select a space';
+        return;
+      }
+      this.onsave([[this.$data.spaceId]]);
+    },
+  },
+  mounted: function() {
+    this.disableAvailableSpaceAnimation();
+    const tiles = this.getSelectableSpaces();
+    this.animateAvailableSpaces(tiles);
+    for (let i = 0, length = tiles.length; i < length; i++) {
+      const tile: HTMLElement = tiles[i] as HTMLElement;
+      const spaceId = tile.getAttribute('data_space_id');
+      if (spaceId === null || this.availableSpaces.has(spaceId) === false) {
+        continue;
+      };
+
+      tile.onclick = () => this.onTileSelected(tile);
     }
+  },
+  template: `<div>
+    <confirm-dialog
+        message="Place your tile here?\n(This confirmation can be disabled in preferences)."
+        enableDontShowAgainCheckbox="true"
+        ref="confirmation"
+        v-on:accept="confirmPlacement"
+        v-on:dismiss="cancelPlacement"
+        v-on:hide="hideDialog" />
+    <div v-if="showtitle" class="wf-select-space">{{ $t(playerinput.title) }}</div>
+    <div v-if="warning" class="nes-container is-rounded"><span class="nes-text is-warning">{{ warning }}</span></div>
+  </div>`,
 });
 

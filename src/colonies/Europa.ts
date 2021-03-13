@@ -1,33 +1,19 @@
-import { Colony, IColony } from './Colony';
-import { Player } from '../Player';
-import { Resources } from '../Resources';
-import { Game } from '../Game';
-import { ColonyName } from './ColonyName';
-import { LogHelper } from '../components/LogHelper';
+import {Colony, ShouldIncreaseTrack} from './Colony';
+import {Resources} from '../Resources';
+import {ColonyName} from './ColonyName';
+import {ColonyBenefit} from './ColonyBenefit';
 
-export class Europa extends Colony implements IColony {
+export class Europa extends Colony {
     public name = ColonyName.EUROPA;
-    public description: string = "Production";
-    public trade(player: Player, game: Game): void {
-        this.beforeTrade(this, player);
-        if (this.trackPosition < 2) {
-            player.setProduction(Resources.MEGACREDITS);
-            LogHelper.logGainProduction(game, player, Resources.MEGACREDITS);
-        } else if (this.trackPosition < 4) {
-            player.setProduction(Resources.ENERGY);
-            LogHelper.logGainProduction(game, player, Resources.ENERGY);
-        } else {
-            player.setProduction(Resources.PLANTS);
-            LogHelper.logGainProduction(game, player, Resources.PLANTS);
-        }
-        this.afterTrade(this, player, game);
-    }
-    public onColonyPlaced(player: Player, game: Game): undefined {
-        super.addColony(this, player, game);
-        game.addOceanInterrupt(player, 'Select ocean for Europa colony')
-        return undefined;
-    }
-    public giveTradeBonus(player: Player): void {
-        player.megaCredits++;
-    }    
+    public description = 'Production';
+    public buildType = ColonyBenefit.PLACE_OCEAN_TILE;
+    public tradeType = ColonyBenefit.GAIN_PRODUCTION;
+    public tradeResource = [
+      Resources.MEGACREDITS, Resources.MEGACREDITS,
+      Resources.ENERGY, Resources.ENERGY,
+      Resources.PLANTS, Resources.PLANTS, Resources.PLANTS,
+    ];
+    public colonyBonusType = ColonyBenefit.GAIN_RESOURCES;
+    public colonyBonusResource = Resources.MEGACREDITS;
+    public shouldIncreaseTrack = ShouldIncreaseTrack.ASK;
 }

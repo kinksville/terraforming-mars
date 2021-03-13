@@ -1,31 +1,31 @@
-import { expect } from "chai";
-import { SnowAlgae } from "../../../src/cards/promo/SnowAlgae";
-import { Color } from "../../../src/Color";
-import { Player } from "../../../src/Player";
-import { Game } from "../../../src/Game";
-import { Resources } from "../../../src/Resources";
-import { maxOutOceans } from "../../TestingUtils";
+import {expect} from 'chai';
+import {SnowAlgae} from '../../../src/cards/promo/SnowAlgae';
+import {Game} from '../../../src/Game';
+import {Player} from '../../../src/Player';
+import {Resources} from '../../../src/Resources';
+import {TestingUtils} from '../../TestingUtils';
+import {TestPlayers} from '../../TestingUtils';
 
-describe("SnowAlgae", function () {
-    let card : SnowAlgae, player : Player, game : Game;
+describe('SnowAlgae', function() {
+  let card : SnowAlgae; let player : Player;
 
-    beforeEach(function() {
-        card = new SnowAlgae();
-        player = new Player("test", Color.BLUE, false);
-        game = new Game("foobar", [player], player);
-    });
+  beforeEach(function() {
+    card = new SnowAlgae();
+    player = TestPlayers.BLUE.newPlayer();
+    Game.newInstance('foobar', [player], player);
+  });
 
-    it("Can't play", function () {
-        maxOutOceans(player, game, 1);
-        expect(card.canPlay(player, game)).to.eq(false);
-    });
+  it('Can\'t play', function() {
+    TestingUtils.maxOutOceans(player, 1);
+    expect(card.canPlay(player)).is.not.true;
+  });
 
-    it("Should play", function () {
-        maxOutOceans(player, game, 2);
-        expect(card.canPlay(player, game)).to.eq(true);
+  it('Should play', function() {
+    TestingUtils.maxOutOceans(player, 2);
+    expect(card.canPlay(player)).is.true;
 
-        card.play(player);
-        expect(player.getProduction(Resources.PLANTS)).to.eq(1);
-        expect(player.getProduction(Resources.HEAT)).to.eq(1);
-    });
+    card.play(player);
+    expect(player.getProduction(Resources.PLANTS)).to.eq(1);
+    expect(player.getProduction(Resources.HEAT)).to.eq(1);
+  });
 });

@@ -1,25 +1,37 @@
-import { IProjectCard } from '../IProjectCard';
-import { CardName } from '../../CardName';
-import { CardType } from '../CardType';
-import { Tags } from '../Tags';
-import { Player } from '../../Player';
-import { Game } from '../../Game';
-import { Resources } from '../../Resources';
+import {IProjectCard} from '../IProjectCard';
+import {CardName} from '../../CardName';
+import {CardType} from '../CardType';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {Resources} from '../../Resources';
+import {CardRequirements} from '../CardRequirements';
+import {CardRenderer} from '../render/CardRenderer';
+import {Card} from '../Card';
 
-export class SnowAlgae implements IProjectCard {
-    public name: CardName = CardName.SNOW_ALGAE;
-    public cost: number = 12;
-    public tags: Array<Tags> = [Tags.PLANT];
-    public cardType: CardType = CardType.AUTOMATED;
+export class SnowAlgae extends Card implements IProjectCard {
+  constructor() {
+    super({
+      cardType: CardType.AUTOMATED,
+      name: CardName.SNOW_ALGAE,
+      cost: 12,
+      tags: [Tags.PLANT],
 
-    public canPlay(player: Player, game: Game): boolean {
-        return game.board.getOceansOnBoard() >= 2 - player.getRequirementsBonus(game);
-    }
+      requirements: CardRequirements.builder((b) => b.oceans(2)),
+      metadata: {
+        cardNumber: '211',
+        renderData: CardRenderer.builder((b) => {
+          b.production((pb) => {
+            pb.plants(1).heat(1);
+          });
+        }),
+        description: 'Requires 2 oceans. Increase your Plant production and your heat production 1 step each.',
+      },
+    });
+  }
 
-    public play(player: Player) {
-        player.setProduction(Resources.PLANTS);
-        player.setProduction(Resources.HEAT);
-        return undefined;
-    }
-
+  public play(player: Player) {
+    player.addProduction(Resources.PLANTS);
+    player.addProduction(Resources.HEAT);
+    return undefined;
+  }
 }

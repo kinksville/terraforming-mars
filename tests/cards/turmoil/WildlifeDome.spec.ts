@@ -1,32 +1,47 @@
-import { expect } from "chai";
-import { WildlifeDome } from "../../../src/cards/turmoil/WildlifeDome";
-import { Player } from "../../../src/Player";
-import { Color } from "../../../src/Color";
-import { GameOptions, Game } from "../../../src/Game";
-import { PartyName } from "../../../src/turmoil/parties/PartyName";
-import { setCustomGameOptions } from "../../TestingUtils";
+import {expect} from 'chai';
+import {WildlifeDome} from '../../../src/cards/turmoil/WildlifeDome';
+import {Game} from '../../../src/Game';
+import {Phase} from '../../../src/Phase';
+import {Player} from '../../../src/Player';
+import {PartyName} from '../../../src/turmoil/parties/PartyName';
+import {PoliticalAgendas} from '../../../src/turmoil/PoliticalAgendas';
+import {setCustomGameOptions, TestPlayers} from '../../TestingUtils';
 
-describe("WildlifeDome", function () {
-    it("Should play", function () {
-        const card = new WildlifeDome();
-        const player = new Player("test", Color.BLUE, false);
+describe('WildlifeDome', function() {
+  let card: WildlifeDome;
+  let player: Player;
+  let redPlayer: Player;
+  let game: Game;
 
-        const gameOptions = setCustomGameOptions() as GameOptions;
-        const game = new Game("foobar", [player,player], player, gameOptions);  
+  beforeEach(() => {
+    card = new WildlifeDome();
+    player = TestPlayers.BLUE.newPlayer();
+    redPlayer = TestPlayers.RED.newPlayer();
+    const gameOptions = setCustomGameOptions();
+    game = Game.newInstance('foobar', [player, redPlayer], player, gameOptions);
+  });
 
-        game.turmoil!.rulingParty = game.turmoil!.getPartyByName(PartyName.REDS)!;
-        expect(card.canPlay(player, game)).to.eq(false);
-        
-        let greens = game.turmoil!.getPartyByName(PartyName.GREENS)!;
-        greens.delegates.push(player.id, player.id);
-        expect(card.canPlay(player, game)).to.eq(false); 
+  it('Should play: reds', function() {
+    game.turmoil!.rulingParty = game.turmoil!.getPartyByName(PartyName.REDS)!;
+    PoliticalAgendas.setNextAgenda(game.turmoil!, game);
+    expect(card.canPlay(player)).is.not.true;
+  });
 
-        player.megaCredits = 18;
-        expect(card.canPlay(player, game)).to.eq(true); 
+  it('Should play: greens', function() {
+    game.phase = Phase.ACTION;
+    game.turmoil!.rulingParty = game.turmoil!.getPartyByName(PartyName.REDS)!;
+    PoliticalAgendas.setNextAgenda(game.turmoil!, game);
 
-        const action = card.play(player, game);
-        expect(action).not.to.eq(undefined);
-        action.cb(action.availableSpaces[0]);
-        expect(game.getOxygenLevel()).to.eq(1);
-    });
+    const greens = game.turmoil!.getPartyByName(PartyName.GREENS)!;
+    greens.delegates.push(player.id, player.id);
+    expect(card.canPlay(player)).is.not.true;
+
+    player.megaCredits = 18;
+    expect(card.canPlay(player)).is.true;
+
+    const action = card.play(player);
+    expect(action).is.not.undefined;
+    action.cb(action.availableSpaces[0]);
+    expect(game.getOxygenLevel()).to.eq(1);
+  });
 });

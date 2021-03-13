@@ -1,72 +1,72 @@
-import { IProjectCard } from "../IProjectCard";
-import { IActionCard, IResourceCard } from "../ICard";
-import { Tags } from "../Tags";
-import { CardType } from "../CardType";
-import { Player } from "../../Player";
-import { ResourceType } from "../../ResourceType";
-import { Game } from "../../Game";
-import { SelectCard } from "../../inputs/SelectCard";
-import { CardName } from "../../CardName";
+import {IActionCard, IResourceCard} from '../ICard';
+import {Tags} from '../Tags';
+import {CardType} from '../CardType';
+import {Player} from '../../Player';
+import {ResourceType} from '../../ResourceType';
+import {CardName} from '../../CardName';
+import {RemoveResourcesFromCard} from '../../deferredActions/RemoveResourcesFromCard';
+import {CardRequirements} from '../CardRequirements';
+import {CardRenderer} from '../render/CardRenderer';
+import {CardRenderDynamicVictoryPoints} from '../render/CardRenderDynamicVictoryPoints';
+import {GlobalParameter} from '../../GlobalParameter';
+import {Card} from '../Card';
 
-export class StratosphericBirds implements IActionCard,IProjectCard, IResourceCard {
-    public cost: number = 12;
-    public tags: Array<Tags> = [Tags.VENUS, Tags.ANIMAL];
-    public name: CardName = CardName.STRATOSPHERIC_BIRDS;
-    public cardType: CardType = CardType.ACTIVE;
-    public resourceType: ResourceType = ResourceType.ANIMAL;
-    public resourceCount: number = 0;
-    public canPlay(player: Player, game: Game): boolean {
-        const cardsWithFloater = player.getCardsWithResources().filter(card => card.resourceType === ResourceType.FLOATER);
-        if (cardsWithFloater.length === 0) return false;
+export class StratosphericBirds extends Card implements IActionCard, IResourceCard {
+  constructor() {
+    super({
+      name: CardName.STRATOSPHERIC_BIRDS,
+      cardType: CardType.ACTIVE,
+      tags: [Tags.VENUS, Tags.ANIMAL],
+      cost: 12,
+      resourceType: ResourceType.ANIMAL,
 
-        const meetsVenusRequirements = game.getVenusScaleLevel() >= 12 - (2 * player.getRequirementsBonus(game, true));
+      requirements: CardRequirements.builder((b) => b.venus(12)),
+      metadata: {
+        cardNumber: '249',
+        renderData: CardRenderer.builder((b) => {
+          b.action('Add 1 animal to this card.', (eb) => {
+            eb.empty().startAction.animals(1);
+          }).br;
+          b.minus().floaters(1).br;
+          b.vpText('1 VP for each Animal on this card.');
+        }),
+        description: {
+          text: 'Requires Venus 12% and that you spend 1 Floater from any card.',
+          align: 'left',
+        },
+        victoryPoints: CardRenderDynamicVictoryPoints.animals(1, 1),
+      },
+    });
+  };
+  public resourceCount: number = 0;
+  public canPlay(player: Player): boolean {
+    const cardsWithFloater = player.getCardsWithResources().filter((card) => card.resourceType === ResourceType.FLOATER);
+    if (cardsWithFloater.length === 0) return false;
 
-        if (cardsWithFloater.length > 1) {
-            return meetsVenusRequirements;
-        } else {
-            const floaterCard = cardsWithFloater[0];
-            if (floaterCard.name !== CardName.DIRIGIBLES) return meetsVenusRequirements;
+    const meetsVenusRequirements = player.game.checkMinRequirements(player, GlobalParameter.VENUS, 12);
 
-            const canPayForFloater = (floaterCard.resourceCount! * 3 + player.megaCredits) >= 15
-            return canPayForFloater && meetsVenusRequirements;
-        }
+    if (cardsWithFloater.length > 1) {
+      return meetsVenusRequirements;
+    } else {
+      const floaterCard = cardsWithFloater[0];
+      if (floaterCard.name !== CardName.DIRIGIBLES) return meetsVenusRequirements;
+
+      const canPayForFloater = ((floaterCard.resourceCount! - 1) * 3 + player.megaCredits) >= 12;
+      return canPayForFloater && meetsVenusRequirements;
     }
-    public play(player: Player) {
-        const cardsWithFloater = player.getCardsWithResources().filter(card => card.resourceType === ResourceType.FLOATER);
-
-        if (cardsWithFloater.length === 1) {
-            const floaterCard = cardsWithFloater[0];
-            
-            if (floaterCard.resourceCount! > 0) {
-                player.removeResourceFrom(floaterCard, 1);
-            } else {
-                player.megaCredits -= 3;
-            }
-
-            return undefined;
-        } else if (cardsWithFloater.length === 0) {
-            player.megaCredits -= 3;
-            return undefined;
-        }
-
-        return new SelectCard(
-            "Select card to remove 1 floater from", 
-            "Remove floater",
-            cardsWithFloater,
-            (foundCards) => {
-                player.removeResourceFrom(foundCards[0], 1)
-                return undefined;
-            }
-        );
-    }
-    public canAct(): boolean {
-        return true;
-    }   
-    public getVictoryPoints(): number {
-        return this.resourceCount;
-    }
-    public action(player: Player) {
-        player.addResourceTo(this);
-        return undefined;
-    }
+  }
+  public play(player: Player) {
+    player.game.defer(new RemoveResourcesFromCard(player, ResourceType.FLOATER, 1, true));
+    return undefined;
+  }
+  public canAct(): boolean {
+    return true;
+  }
+  public getVictoryPoints(): number {
+    return this.resourceCount;
+  }
+  public action(player: Player) {
+    player.addResourceTo(this);
+    return undefined;
+  }
 }

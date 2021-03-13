@@ -1,54 +1,65 @@
-import { IProjectCard } from '../IProjectCard';
-import { IActionCard, IResourceCard } from '../ICard';
-import { CardName } from '../../CardName';
-import { CardType } from '../CardType';
-import { ResourceType } from '../../ResourceType';
-import { Tags } from '../Tags';
-import { Player } from '../../Player';
-import { Resources } from '../../Resources';
-import { Game } from '../../Game';
-import { LogMessageType } from '../../LogMessageType';
-import { LogMessageData } from '../../LogMessageData';
-import { LogMessageDataType } from '../../LogMessageDataType';
+import {IProjectCard} from '../IProjectCard';
+import {IActionCard, IResourceCard} from '../ICard';
+import {Card} from '../Card';
+import {CardName} from '../../CardName';
+import {CardType} from '../CardType';
+import {ResourceType} from '../../ResourceType';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {Resources} from '../../Resources';
+import {CardRenderer} from '../render/CardRenderer';
+import {CardRenderDynamicVictoryPoints} from '../render/CardRenderDynamicVictoryPoints';
+import {CardRenderItemSize} from '../render/CardRenderItemSize';
 
-export class AsteroidDeflectionSystem implements IActionCard, IProjectCard, IResourceCard {
-    public name: CardName = CardName.ASTEROID_DEFLECTION_SYSTEM;
-    public cost: number = 13;
-    public tags: Array<Tags> = [Tags.SPACE, Tags.EARTH, Tags.STEEL];
-    public resourceType: ResourceType = ResourceType.ASTEROID;
-    public resourceCount: number = 0;
-    public cardType: CardType = CardType.ACTIVE;
-    public hasRequirements = false;
+export class AsteroidDeflectionSystem extends Card implements IActionCard, IProjectCard, IResourceCard {
+  constructor() {
+    super({
+      cardType: CardType.ACTIVE,
+      name: CardName.ASTEROID_DEFLECTION_SYSTEM,
+      tags: [Tags.SPACE, Tags.EARTH, Tags.BUILDING],
+      cost: 13,
+      resourceType: ResourceType.ASTEROID,
 
-    public canPlay(player: Player): boolean {
-        return player.getProduction(Resources.ENERGY) >= 1;
-    }
+      metadata: {
+        cardNumber: 'X27',
+        renderData: CardRenderer.builder((b) => {
+          b.action('REVEAL AND DISCARD the top card of the deck. If it has a space tag, add an asteroid here.', (eb) => {
+            eb.empty().startAction.cards(1).asterix().nbsp.space().played.colon().asteroids(1);
+          }).br;
+          b.production((pb) => pb.minus().energy(1)).text('opponents may not remove your plants', CardRenderItemSize.SMALL, true);
+        }),
+        description: {
+          text: 'Decrease your energy production 1 step. 1VP per asteroid on this card.',
+          align: 'left',
+        },
+        victoryPoints: CardRenderDynamicVictoryPoints.asteroids(1, 1),
+      },
+    });
+  }
+  public resourceCount = 0;
 
-    public play(player: Player) {
-        player.setProduction(Resources.ENERGY,  -1);
-        return undefined;
-    }
+  public canPlay(player: Player): boolean {
+    return player.getProduction(Resources.ENERGY) >= 1;
+  }
 
-    public canAct(): boolean {
-        return true;
-    }
+  public play(player: Player) {
+    player.addProduction(Resources.ENERGY, -1);
+    return undefined;
+  }
 
-    public action(player: Player, game: Game) {
-        const topCard = game.dealer.dealCard();
-        if (topCard.tags.indexOf(Tags.SPACE) !== -1) player.addResourceTo(this);
+  public canAct(): boolean {
+    return true;
+  }
 
-        game.log(
-            LogMessageType.DEFAULT,
-            "${0} revealed and discarded ${1}",
-            new LogMessageData(LogMessageDataType.PLAYER, player.id),
-            new LogMessageData(LogMessageDataType.CARD, topCard.name)
-        );
-            
-        game.dealer.discard(topCard);
-        return undefined;
-    }
+  public action(player: Player) {
+    const topCard = player.game.dealer.dealCard(player.game);
+    if (topCard.tags.includes(Tags.SPACE)) player.addResourceTo(this);
+    player.game.log('${0} revealed and discarded ${1}', (b) => b.player(player).card(topCard));
+    player.game.dealer.discard(topCard);
+    return undefined;
+  }
 
-    public getVictoryPoints(): number {
-        return this.resourceCount;
-    }
+  public getVictoryPoints(): number {
+    return this.resourceCount;
+  }
 }

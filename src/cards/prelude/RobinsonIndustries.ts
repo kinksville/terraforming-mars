@@ -1,88 +1,70 @@
+import {IActionCard} from '../ICard';
+import {Player} from '../../Player';
+import {CorporationCard} from './../corporation/CorporationCard';
+import {OrOptions} from '../../inputs/OrOptions';
+import {SelectOption} from '../../inputs/SelectOption';
+import {Resources} from '../../Resources';
+import {Card} from '../Card';
+import {CardName} from '../../CardName';
+import {LogHelper} from '../../LogHelper';
+import {CardType} from '../CardType';
+import {CardRenderer} from '../render/CardRenderer';
 
-import { IActionCard } from "../ICard";
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { CorporationCard } from "./../corporation/CorporationCard";
-import { OrOptions } from "../../inputs/OrOptions";
-import { SelectOption } from "../../inputs/SelectOption";
-import { Resources } from "../../Resources";
-import { CardName } from "../../CardName";
+export class RobinsonIndustries extends Card implements IActionCard, CorporationCard {
+  constructor() {
+    super({
+      cardType: CardType.CORPORATION,
+      name: CardName.ROBINSON_INDUSTRIES,
+      startingMegaCredits: 47,
 
-export class RobinsonIndustries implements IActionCard, CorporationCard {
-    public name: CardName = CardName.ROBINSON_INDUSTRIES;
-    public tags: Array<Tags> = [];
-    public startingMegaCredits: number = 47;
-    public play() {
+      metadata: {
+        cardNumber: 'R27',
+        description: 'You start with 47 MC.',
+        renderData: CardRenderer.builder((b) => {
+          b.br.br.br;
+          b.megacredits(47);
+          b.corpBox('action', (ce) => {
+            ce.action('Spend 4 MC to increase (one of) your LOWEST production 1 step.', (eb) => {
+              eb.megacredits(4).startAction.production((pb) => pb.wild(1).asterix());
+            });
+          });
+        }),
+      },
+    });
+  }
+  public play() {
+    return undefined;
+  }
+
+  public canAct(player: Player): boolean {
+    return player.canAfford(4);
+  }
+
+  public action(player: Player) {
+    let minimum = player.getProduction(Resources.MEGACREDITS);
+    let lowest: Array<SelectOption> = [];
+
+    [Resources.MEGACREDITS, Resources.STEEL, Resources.TITANIUM, Resources.PLANTS, Resources.ENERGY, Resources.HEAT].forEach((resource) => {
+      const option = new SelectOption('Increase ' + resource + ' production 1 step', 'Select', () => {
+        this.increaseAndLogProduction(player, resource);
         return undefined;
-    }
-    public canAct(player: Player): boolean {
-        return player.canAfford(4); 
-    }
-    public action(player: Player) {
-        let minimum = player.getProduction(Resources.MEGACREDITS);
-        let lowest: Array<SelectOption> = [new SelectOption("Increase MC production 1 step", "Increase production", () => {
-            player.setProduction(Resources.MEGACREDITS);
-            player.megaCredits -= 4;
-            return undefined;
-        })];
-        if (player.getProduction(Resources.STEEL) < minimum) {
-            lowest = [];
-            minimum = player.getProduction(Resources.STEEL);
-        }
-        if (player.getProduction(Resources.STEEL) === minimum) {
-            lowest.push(new SelectOption("Increase steel production 1 step", "Increase production", () => {
-                player.setProduction(Resources.STEEL);
-                player.megaCredits -= 4;
-                return undefined;
-            }));
-        }
-        if (player.getProduction(Resources.TITANIUM) < minimum) {
-            lowest = [];
-            minimum = player.getProduction(Resources.TITANIUM);
-        }
-        if (player.getProduction(Resources.TITANIUM) === minimum) {
-            lowest.push(new SelectOption("Increase titanium production 1 step", 
-            "Increase production", () => {
-                player.setProduction(Resources.TITANIUM);
-                player.megaCredits -= 4;
-                return undefined;
-            }));
-        }
-        if (player.getProduction(Resources.PLANTS) < minimum) {
-            lowest = [];
-            minimum = player.getProduction(Resources.PLANTS);
-        }
-        if (player.getProduction(Resources.PLANTS) === minimum) {
-            lowest.push(new SelectOption("Increase plant production 1 step", "Increase production", () => {
-                player.setProduction(Resources.PLANTS);
-                player.megaCredits -= 4;
-                return undefined;
-            }));
-        }
-        if (player.getProduction(Resources.ENERGY) < minimum) {
-            lowest = [];
-            minimum = player.getProduction(Resources.ENERGY);
-        }
-        if (player.getProduction(Resources.ENERGY) === minimum) {
-            lowest.push(new SelectOption("Increase energy production 1 step", "Increase production", () => {
-                player.setProduction(Resources.ENERGY);
-                player.megaCredits -= 4;
-                return undefined;
-            }));
-        }
-        if (player.getProduction(Resources.HEAT) < minimum) {
-            lowest = [];
-            minimum = player.getProduction(Resources.HEAT);
-        }
-        if (player.getProduction(Resources.HEAT) === minimum) {
-            lowest.push(new SelectOption("Increase heat production 1 step", "Increase production", () => {
-                player.setProduction(Resources.HEAT);
-                player.megaCredits -= 4;
-                return undefined;
-            }));
-        }
-        const result = new OrOptions();
-        result.options = lowest;
-        return result;
-    }
+      });
+
+      if (player.getProduction(resource) < minimum) {
+        lowest = [];
+        minimum = player.getProduction(resource);
+      }
+      if (player.getProduction(resource) === minimum) lowest.push(option);
+    });
+
+    const result = new OrOptions();
+    result.options = lowest;
+    return result;
+  }
+
+  private increaseAndLogProduction(player: Player, resource: Resources) {
+    player.addProduction(resource);
+    player.megaCredits -= 4;
+    LogHelper.logGainProduction(player, resource);
+  }
 }

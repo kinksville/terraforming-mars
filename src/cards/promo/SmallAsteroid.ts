@@ -1,34 +1,46 @@
-import { IProjectCard } from "../IProjectCard";
-import { CardName } from "../../CardName";
-import { CardType } from "../CardType";
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { Game } from "../../Game";
-import { Resources } from "../../Resources";
-import { PartyHooks } from "../../turmoil/parties/PartyHooks";
-import { PartyName } from "../../turmoil/parties/PartyName";
-import { REDS_RULING_POLICY_COST, MAX_TEMPERATURE } from "../../constants";
+import {IProjectCard} from '../IProjectCard';
+import {Card} from '../Card';
+import {CardName} from '../../CardName';
+import {CardType} from '../CardType';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {PartyHooks} from '../../turmoil/parties/PartyHooks';
+import {PartyName} from '../../turmoil/parties/PartyName';
+import {REDS_RULING_POLICY_COST, MAX_TEMPERATURE} from '../../constants';
+import {RemoveAnyPlants} from '../../deferredActions/RemoveAnyPlants';
+import {CardRenderer} from '../render/CardRenderer';
 
-export class SmallAsteroid implements IProjectCard {
-    public cost: number = 10;
-    public name: CardName = CardName.SMALL_ASTEROID;
-    public tags: Array<Tags> = [Tags.SPACE];
-    public cardType: CardType = CardType.EVENT;
-    public hasRequirements = false;
+export class SmallAsteroid extends Card implements IProjectCard {
+  constructor() {
+    super({
+      cardType: CardType.EVENT,
+      name: CardName.SMALL_ASTEROID,
+      tags: [Tags.SPACE],
+      cost: 10,
 
-    public canPlay(player: Player, game: Game): boolean {
-        const canRaiseTemperature = game.getTemperature() < MAX_TEMPERATURE;
-        if (PartyHooks.shouldApplyPolicy(game, PartyName.REDS) && canRaiseTemperature) {
-          return player.canAfford(player.getCardCost(game, this) + REDS_RULING_POLICY_COST, game, false, true);
-        }
-  
-        return true;
+      metadata: {
+        cardNumber: '209',
+        renderData: CardRenderer.builder((b) => {
+          b.temperature(1).br;
+          b.minus().plants(2).any;
+        }),
+        description: 'Increase temperature 1 step. Remove up to 2 plants from any player.',
+      },
+    });
+  }
+
+  public canPlay(player: Player): boolean {
+    const canRaiseTemperature = player.game.getTemperature() < MAX_TEMPERATURE;
+    if (PartyHooks.shouldApplyPolicy(player.game, PartyName.REDS) && canRaiseTemperature) {
+      return player.canAfford(player.getCardCost(this) + REDS_RULING_POLICY_COST, false, true);
     }
 
-    public play(player: Player, game: Game) {
-        game.increaseTemperature(player, 1);
-        game.addResourceDecreaseInterrupt(player, Resources.PLANTS, 2);
-        return undefined;
-    }
+    return true;
+  }
 
+  public play(player: Player) {
+    player.game.increaseTemperature(player, 1);
+    player.game.defer(new RemoveAnyPlants(player, 2));
+    return undefined;
+  }
 }

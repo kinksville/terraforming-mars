@@ -1,22 +1,30 @@
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { Game } from "../../Game";
-import { PreludeCard } from "./PreludeCard";
-import { IProjectCard } from "../IProjectCard";
-import { SelectSpace } from "../../inputs/SelectSpace";
-import { ISpace } from "../../ISpace";
-import { Resources } from '../../Resources';
-import { CardName } from '../../CardName';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {PreludeCard} from './PreludeCard';
+import {Resources} from '../../Resources';
+import {CardName} from '../../CardName';
+import {PlaceCityTile} from '../../deferredActions/PlaceCityTile';
+import {CardRenderer} from '../render/CardRenderer';
 
-export class EarlySettlement extends PreludeCard implements IProjectCard {
-    public tags: Array<Tags> = [Tags.STEEL, Tags.CITY];
-    public name: CardName = CardName.EARLY_SETTLEMENT;
-    public play(player: Player, game: Game) {  
-        player.setProduction(Resources.PLANTS);  	
-        return new SelectSpace("Select space for city tile", game.board.getAvailableSpacesForCity(player), (space: ISpace) => {
-            game.addCityTile(player, space.id);
-            return undefined;
-        }); 
-    }
+export class EarlySettlement extends PreludeCard {
+  constructor() {
+    super({
+      name: CardName.EARLY_SETTLEMENT,
+      tags: [Tags.BUILDING, Tags.CITY],
+
+      metadata: {
+        cardNumber: 'P09',
+        renderData: CardRenderer.builder((b) => {
+          b.production((pb) => pb.plants(1)).city();
+        }),
+        description: 'Increase your plant production 1 step. Place a city tile.',
+      },
+    });
+  }
+  public play(player: Player) {
+    player.addProduction(Resources.PLANTS);
+    player.game.defer(new PlaceCityTile(player));
+    return undefined;
+  }
 }
 

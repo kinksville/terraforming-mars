@@ -1,28 +1,39 @@
-import { IProjectCard } from "../IProjectCard";
-import { Tags } from "../Tags";
-import { CardName } from "../../CardName";
-import { CardType } from "../CardType";
-import { Player } from "../../Player";
-import { Game } from '../../Game';
+import {IProjectCard} from '../IProjectCard';
+import {CardName} from '../../CardName';
+import {CardType} from '../CardType';
+import {Player} from '../../Player';
+import {CardRequirements} from '../CardRequirements';
+import {Card} from '../Card';
 
-export class PublicCelebrations implements IProjectCard {
-    public cost: number = 8;
-    public tags: Array<Tags> = [];
-    public name: CardName = CardName.PUBLIC_CELEBRATIONS;
-    public cardType: CardType = CardType.EVENT;
+export class PublicCelebrations extends Card implements IProjectCard {
+  constructor() {
+    super({
+      cost: 8,
+      tags: [],
+      name: CardName.PUBLIC_CELEBRATIONS,
+      cardType: CardType.EVENT,
 
-    public canPlay(player: Player, game: Game): boolean {
-        if (game.turmoil !== undefined) {
-            return game.turmoil.chairman === player.id;
-        }
-        return false;
+      requirements: CardRequirements.builder((b) => b.chairman()),
+      metadata: {
+        description: 'Requires that you are Chairman.',
+        cardNumber: 'T10',
+        victoryPoints: 2,
+      },
+    });
+  }
+
+  public canPlay(player: Player): boolean {
+    if (player.game.turmoil !== undefined) {
+      return player.game.turmoil.chairman === player.id;
     }
+    return false;
+  }
 
-    public play() {
-        return undefined;
-    }
+  public play() {
+    return undefined;
+  }
 
-    public getVictoryPoints() {
-        return 2;
-    }
+  public getVictoryPoints() {
+    return 2;
+  }
 }

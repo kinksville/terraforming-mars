@@ -1,20 +1,30 @@
-import { Tags } from "../Tags";
-import { Player } from "../../Player";
-import { Game } from "../../Game";
-import { PreludeCard } from "./PreludeCard";
-import { IProjectCard } from "../IProjectCard";
-import { Resources } from '../../Resources';
-import { CardName } from '../../CardName';
+import {Tags} from '../Tags';
+import {Player} from '../../Player';
+import {PreludeCard} from './PreludeCard';
+import {IProjectCard} from '../IProjectCard';
+import {Resources} from '../../Resources';
+import {CardName} from '../../CardName';
+import {CardRenderer} from '../render/CardRenderer';
 
 export class ResearchNetwork extends PreludeCard implements IProjectCard {
-    public tags: Array<Tags> = [Tags.WILDCARD];
-    public name: CardName = CardName.RESEARCH_NETWORK;
-    public play(player: Player, game: Game) {     
-        player.setProduction(Resources.MEGACREDITS);
-        for (let i = 0; i < 3; i++) {
-            player.cardsInHand.push(game.dealer.dealCard());
-        }
-        return undefined;
-    }
-}
+  constructor() {
+    super({
+      name: CardName.RESEARCH_NETWORK,
+      tags: [Tags.WILDCARD],
 
+      metadata: {
+        cardNumber: 'P28',
+        renderData: CardRenderer.builder((b) => {
+          b.production((pb) => pb.megacredits(1)).br;
+          b.cards(3);
+        }),
+        description: 'Increase your MC production 1 step. Draw 3 cards. After being played, when you perform an action, the wild tag counts as any tag of your choice.',
+      },
+    });
+  }
+  public play(player: Player) {
+    player.addProduction(Resources.MEGACREDITS);
+    player.drawCard(3);
+    return undefined;
+  }
+}
